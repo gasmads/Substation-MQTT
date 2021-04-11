@@ -199,7 +199,7 @@ void setup() {
   Serial.begin(115200);
   // setup WiFi
   setup_wifi();
-  DS18B20.begin();
+  //DS18B20.begin();
   //client.setServer(mqtt_server, 17229);
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
