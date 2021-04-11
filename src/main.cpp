@@ -45,45 +45,6 @@ PubSubClient client(espClient);
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature DS18B20(&oneWire);
 
-
-void setup() {
-  // setup serial port
-  Serial.begin(115200);
-  // setup WiFi
-  setup_wifi();
-  //DS18B20.begin();
-  //client.setServer(mqtt_server, 17229);
-  client.setServer(mqtt_server, 1883);
-  client.setCallback(callback);
-  pinMode(R0, OUTPUT);    
-  pinMode(R1, OUTPUT);    
-  pinMode(R2, OUTPUT);    
-  pinMode(R3, OUTPUT);    
-  digitalWrite(R0, HIGH);
-  digitalWrite(R1, HIGH);
-  digitalWrite(R2, HIGH);
-  digitalWrite(R3, HIGH);
-}
-
-void setup_wifi() {
-  delay(10);
-  // We start by connecting to a WiFi network
-  Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-
-  WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
-}
-
 float getTemperature() {
   float temp;
   do {
@@ -94,14 +55,45 @@ float getTemperature() {
   return temp;
 }
 
+void send_messure_data(){
+  // read the input pin
+  char result[8]; // Buffer big enough for 7-character float 
+  float temperature = getTemperature();
+  dtostrf(temperature, 6, 2, result);
+
+  readingIn = analogRead(AnalogIn);    // read the input pin
+  // Convert data to JSON string 
+  String json =
+  "{"
+  "\"temperature\": \"" + String(temperature) + "\","
+  "\"analog\": \"" + String(readingIn) + "\","
+  "\"relay_1\": \"" + digitalRead(R0) + "\","
+  "\"relay_2\": \"" + digitalRead(R1) + "\","
+  "\"relay_3\": \"" + digitalRead(R2) + "\","
+  "\"relay_4\": \"" + digitalRead(R3) + "\"}";
+  // Convert JSON string to character array
+  // Serial.print("json length: ");
+  // Serial.println(json.length()+1);
+  char jsonChar[200];
+  json.toCharArray(jsonChar, json.length()+1);
+  // Publish JSON character array to MQTT topic
+  // mqtt_topic = "/Gasmads/Outdoor/07/json/";
+
+  if( client.publish(mqtt_topic,jsonChar)){
+    Serial.println(json); 
+  }
+  else{
+    Serial.println("Ikke Sendt");      
+  }
+}
+
 void callback(char* topic, byte* payload, unsigned int length) {
   char message_buff[100];
-  int i = 0;
   int x = 0;
   Serial.print("Message arrived [");
   Serial.print(topic);
   Serial.print("] ");
-  for (int i = 0; i < length; i++) {
+  for ( unsigned int i = 0; i < length; i++) {
     //Serial.print((char)payload[i]);
     message_buff[i] = payload[i];
     x++;
@@ -160,41 +152,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
   send_messure_data();
 }
 
-void send_messure_data(){
-  // read the input pin
-
-  char result[8]; // Buffer big enough for 7-character float 
-  float temperature = getTemperature();
-  dtostrf(temperature, 6, 2, result);
-
-  
-  readingIn = analogRead(AnalogIn);    // read the input pin
-
-  // Convert data to JSON string 
-  String json =
-  "{"
-  "\"temperature\": \"" + String(temperature) + "\","
-  "\"analog\": \"" + String(readingIn) + "\","
-  "\"relay_1\": \"" + digitalRead(R0) + "\","
-  "\"relay_2\": \"" + digitalRead(R1) + "\","
-  "\"relay_3\": \"" + digitalRead(R2) + "\","
-  "\"relay_4\": \"" + digitalRead(R3) + "\"}";
-  // Convert JSON string to character array
-  // Serial.print("json length: ");
-  // Serial.println(json.length()+1);
-  char jsonChar[200];
-  json.toCharArray(jsonChar, json.length()+1);
-  // Publish JSON character array to MQTT topic
-  // mqtt_topic = "/Gasmads/Outdoor/07/json/";
-
-  if( client.publish(mqtt_topic,jsonChar)){
-    Serial.println(json); 
-  }
-  else{
-    Serial.println("Ikke Sendt");      
-  }
-}
-
 
 void reconnect() {
   // Loop until we're reconnected
@@ -219,10 +176,45 @@ void reconnect() {
   }
 }
 
+void setup_wifi() {
+  delay(10);
+  // We start by connecting to a WiFi network
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+}
+
+void setup() {
+  // setup serial port
+  Serial.begin(115200);
+  // setup WiFi
+  setup_wifi();
+  DS18B20.begin();
+  //client.setServer(mqtt_server, 17229);
+  client.setServer(mqtt_server, 1883);
+  client.setCallback(callback);
+  pinMode(R0, OUTPUT);    
+  pinMode(R1, OUTPUT);    
+  pinMode(R2, OUTPUT);    
+  pinMode(R3, OUTPUT);    
+  digitalWrite(R0, HIGH);
+  digitalWrite(R1, HIGH);
+  digitalWrite(R2, HIGH);
+  digitalWrite(R3, HIGH);
+}
 
 void loop() {
   unsigned long currentMillis = millis();
-
   if (!client.connected()) {
     reconnect();
   }
@@ -232,5 +224,4 @@ void loop() {
     previousMillis = currentMillis;
     send_messure_data();
   }
-
 }
